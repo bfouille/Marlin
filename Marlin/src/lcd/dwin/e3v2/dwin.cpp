@@ -1952,6 +1952,11 @@ void Draw_Status_Area(const bool with_update) {
     DWIN_Draw_Signed_Float(DWIN_FONT_STAT, Color_Bg_Black, 2, 2, 178, 429, BABY_Z_VAR * 100);
   #endif
 
+  //Preparing live x y z, by cosmoderp advance menu
+  //DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 3, 1, 37,  444, current_position[X_AXIS] * MINUNITMULT); //x
+  //DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 3, 1, 134, 444, current_position[Y_AXIS] * MINUNITMULT); //y
+  //DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 3, 1, 220, 444, current_position[Z_AXIS] * MINUNITMULT); //z
+
   if (with_update) {
     DWIN_UpdateLCD();
     delay(5);
@@ -3450,11 +3455,10 @@ void HMI_Refuel(void){
             return;
           }
         #endif
-        if (!planner.is_full()) {
-          planner.synchronize(); // Wait for planner moves to finish!
-          planner.buffer_line(current_position, MMM_TO_MMS(FEEDRATE_E), active_extruder);
-        }
-        current_position.e = current_position.e + HMI_ValueStruct.Move_E_scale / 10;
+        sprintf_P(gcode_string, PSTR("G1 E%.2f"), (HMI_ValueStruct.Move_E_scale/10));
+        gcode.process_subcommands_now_P("G1 F150");
+        gcode.process_subcommands_now_P("G92 E0");
+        gcode.process_subcommands_now_P(PSTR(gcode_string ));
         break;
       case 3: //Retreat
         #ifdef PREVENT_COLD_EXTRUSION
@@ -3465,11 +3469,10 @@ void HMI_Refuel(void){
             return;
           }
         #endif
-        if (!planner.is_full()) {
-          planner.synchronize(); // Wait for planner moves to finish!
-          planner.buffer_line(current_position, MMM_TO_MMS(FEEDRATE_E), active_extruder);
-        }
-        current_position.e = current_position.e - HMI_ValueStruct.Move_E_scale / 10;
+        sprintf_P(gcode_string, PSTR("G1 E-%.2f"), (HMI_ValueStruct.Move_E_scale/10));
+        gcode.process_subcommands_now_P("G1 F150");
+        gcode.process_subcommands_now_P("G92 E0");
+        gcode.process_subcommands_now_P(PSTR(gcode_string ));
         break;
     }
   }
@@ -4052,6 +4055,8 @@ void EachMomentUpdate() {
           if (encoder_diffState == ENCODER_DIFF_ENTER) {
             recovery_flag = false;
             if (HMI_flag.select_flag) break;
+            gcode.process_subcommands_now_P(PSTR("M21"));//Reload SD Card
+            recovery.purge();
             TERN_(POWER_LOSS_RECOVERY, queue.inject_P(PSTR("M1000C")));
             HMI_StartFrame(true);
             return;
