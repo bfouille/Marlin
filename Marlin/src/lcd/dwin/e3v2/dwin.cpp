@@ -48,7 +48,7 @@
 #include <string.h>
 
 #include "../../fontutils.h"
-#include "../../ultralcd.h"
+#include "../../marlinui.h"
 
 #include "../../../sd/cardreader.h"
 
@@ -629,7 +629,7 @@ inline void Item_Prepare_Home(const uint8_t row) {
     if (HMI_IsChinese()) {
       #if HAS_BED_PROBE
         DWIN_Frame_AreaCopy(1, 174, 164, 223, 177, LBLX, MBASE(row));
-        DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, 2, 202, MBASE(row), BABY_Z_VAR * 100);
+        DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, 2, 202, MBASE(row), probe.offset.z * 100);
       #else
         DWIN_Frame_AreaCopy(1, 43, 89, 98, 101, LBLX, MBASE(row));
       #endif
@@ -637,7 +637,7 @@ inline void Item_Prepare_Home(const uint8_t row) {
     else {
       #if HAS_BED_PROBE
         DWIN_Frame_AreaCopy(1, 93, 179, 141, 189, LBLX, MBASE(row));    // "Z-Offset"
-        DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, 2, 202, MBASE(row), BABY_Z_VAR * 100);
+        DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, 2, 202, MBASE(row), probe.offset.z * 100);
       #else
         DWIN_Frame_AreaCopy(1, 1, 76, 106, 86, LBLX, MBASE(row));       // "..."
       #endif
@@ -1305,7 +1305,6 @@ void HMI_Move_Z() {
   }
 
   void HMI_Move_E_Refuel() {
-    static float last_E_scale = 0;
     ENCODER_DiffState encoder_diffState = Encoder_ReceiveAnalyze();
     if (encoder_diffState != ENCODER_DIFF_NO) {
       if (Apply_Encoder(encoder_diffState, HMI_ValueStruct.Move_E_scale)) {
@@ -1348,14 +1347,8 @@ void HMI_Move_Z() {
                 babystep.add_mm(Z_AXIS, dwin_zoffset - last_zoffset);
             #endif
         #endif
-        if (HMI_ValueStruct.show_mode == -4) {
-          checkkey = Prepare;
-          DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, 2, 202, MBASE(zoff_line), TERN(HAS_BED_PROBE, BABY_Z_VAR * 100, HMI_ValueStruct.offset_value));
-        }
-        else {
-          checkkey = Tune;
-          DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, 2, 202, MBASE(zoff_line), TERN(HAS_BED_PROBE, BABY_Z_VAR * 100, HMI_ValueStruct.offset_value));
-        }
+        checkkey = HMI_ValueStruct.show_mode == -4 ? Prepare : Tune;
+        DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, 2, 202, MBASE(zoff_line), TERN(HAS_BED_PROBE, BABY_Z_VAR * 100, HMI_ValueStruct.offset_value));
         DWIN_UpdateLCD();
         return;
       }
@@ -1415,11 +1408,7 @@ void HMI_ZoffsetRT() {
       }
       if (Apply_Encoder(encoder_diffState, HMI_ValueStruct.E_Temp)) {
         EncoderRate.enabled = false;
-        if (HMI_ValueStruct.show_mode == -1) { // temperature
-          checkkey = TemperatureID;
-          DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 3, 216, MBASE(temp_line), HMI_ValueStruct.E_Temp);
-        }
-        else if (HMI_ValueStruct.show_mode == -2) {
+        if (HMI_ValueStruct.show_mode == -2) {
           checkkey = PLAPreheat;
           ui.material_preset[0].hotend_temp = HMI_ValueStruct.E_Temp;
           DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 3, 216, MBASE(temp_line), ui.material_preset[0].hotend_temp);
@@ -1431,10 +1420,11 @@ void HMI_ZoffsetRT() {
           DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 3, 216, MBASE(temp_line), ui.material_preset[1].hotend_temp);
           return;
         }
-        else { // tune
+        else if (HMI_ValueStruct.show_mode == -1) // Temperature
+          checkkey = TemperatureID;
+        else
           checkkey = Tune;
-          DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 3, 216, MBASE(temp_line), HMI_ValueStruct.E_Temp);
-        }
+        DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 3, 216, MBASE(temp_line), HMI_ValueStruct.E_Temp);
         thermalManager.setTargetHotend(HMI_ValueStruct.E_Temp, 0);
         return;
       }
@@ -1462,11 +1452,7 @@ void HMI_ZoffsetRT() {
       }
       if (Apply_Encoder(encoder_diffState, HMI_ValueStruct.Bed_Temp)) {
         EncoderRate.enabled = false;
-        if (HMI_ValueStruct.show_mode == -1) {
-          checkkey = TemperatureID;
-          DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 3, 216, MBASE(bed_line), HMI_ValueStruct.Bed_Temp);
-        }
-        else if (HMI_ValueStruct.show_mode == -2) {
+        if (HMI_ValueStruct.show_mode == -2) {
           checkkey = PLAPreheat;
           ui.material_preset[0].bed_temp = HMI_ValueStruct.Bed_Temp;
           DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 3, 216, MBASE(bed_line), ui.material_preset[0].bed_temp);
@@ -1478,10 +1464,11 @@ void HMI_ZoffsetRT() {
           DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 3, 216, MBASE(bed_line), ui.material_preset[1].bed_temp);
           return;
         }
-        else {
+        else if (HMI_ValueStruct.show_mode == -1)
+          checkkey = TemperatureID;
+        else
           checkkey = Tune;
-          DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 3, 216, MBASE(bed_line), HMI_ValueStruct.Bed_Temp);
-        }
+        DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 3, 216, MBASE(bed_line), HMI_ValueStruct.Bed_Temp);
         thermalManager.setTargetBed(HMI_ValueStruct.Bed_Temp);
         return;
       }
@@ -1510,11 +1497,7 @@ void HMI_ZoffsetRT() {
 
       if (Apply_Encoder(encoder_diffState, HMI_ValueStruct.Fan_speed)) {
         EncoderRate.enabled = false;
-        if (HMI_ValueStruct.show_mode == -1) {
-          checkkey = TemperatureID;
-          DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 3, 216, MBASE(fan_line), HMI_ValueStruct.Fan_speed);
-        }
-        else if (HMI_ValueStruct.show_mode == -2) {
+        if (HMI_ValueStruct.show_mode == -2) {
           checkkey = PLAPreheat;
           ui.material_preset[0].fan_speed = HMI_ValueStruct.Fan_speed;
           DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 3, 216, MBASE(fan_line), ui.material_preset[0].fan_speed);
@@ -1526,10 +1509,11 @@ void HMI_ZoffsetRT() {
           DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 3, 216, MBASE(fan_line), ui.material_preset[1].fan_speed);
           return;
         }
-        else {
+        else if (HMI_ValueStruct.show_mode == -1)
+          checkkey = TemperatureID;
+        else
           checkkey = Tune;
-          DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 3, 216, MBASE(fan_line), HMI_ValueStruct.Fan_speed);
-        }
+        DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 3, 216, MBASE(fan_line), HMI_ValueStruct.Fan_speed);
         thermalManager.set_fan_speed(0, HMI_ValueStruct.Fan_speed);
         return;
       }
@@ -1949,7 +1933,8 @@ void Draw_Status_Area(const bool with_update) {
 
   #if HAS_ZOFFSET_ITEM
     DWIN_ICON_Show(ICON, ICON_Zoffset, 158, 428);
-    DWIN_Draw_Signed_Float(DWIN_FONT_STAT, Color_Bg_Black, 2, 2, 178, 429, BABY_Z_VAR * 100);
+    dwin_zoffset = BABY_Z_VAR;
+    DWIN_Draw_Signed_Float(DWIN_FONT_STAT, Color_Bg_Black, 2, 2, 178, 429, dwin_zoffset * 100);
   #endif
 
   //Preparing live x y z, by cosmoderp advance menu
@@ -2269,7 +2254,7 @@ void HMI_Printing() {
             #endif
           #endif
 
-          strcat_P(cmd, PSTR("M24"));
+          strcat_P(cmd, M24_STR);
           queue.inject(cmd);
         }
         else {
@@ -2541,7 +2526,7 @@ void HMI_Prepare() {
       case PREPARE_CASE_HOME: // Homing
         checkkey = Last_Prepare;
         index_prepare = MROWS;
-        gcode.process_subcommands_now( PSTR("M220 S100"));
+        gcode.process_subcommands_now_P( PSTR("M220 S100"));
         queue.inject_P(PSTR("G28")); // G28 will set home_flag
         Popup_Window_Home();
         break;
@@ -2564,15 +2549,15 @@ void HMI_Prepare() {
           select_ztool.reset();
           Popup_Window_Home(false);
           DWIN_UpdateLCD();
-          gcode.process_subcommands_now( PSTR("M220 S100"));
-          gcode.process_subcommands_now( PSTR("M420 Z0"));
-          gcode.process_subcommands_now( PSTR("G28"));
-          gcode.process_subcommands_now( PSTR("G92 E0"));
+          gcode.process_subcommands_now_P( PSTR("M220 S100"));
+          gcode.process_subcommands_now_P( PSTR("M420 Z0"));
+          gcode.process_subcommands_now_P( PSTR("G28"));
+          gcode.process_subcommands_now_P( PSTR("G92 E0"));
           //gcode.process_subcommands_now_P( PSTR("G1 F4000 Z10"));
           //gcode.process_subcommands_now_P( PSTR("G1 F4000 X145 Y116"));
           gcode.process_subcommands_now_P( PSTR("G1 F60 Z0"));
           gcode.process_subcommands_now_P( PSTR("M211 S0"));
-          gcode.process_subcommands_now( PSTR("M220 S100"));
+          gcode.process_subcommands_now_P( PSTR("M220 S100"));
           planner.synchronize();
           current_position.e = HMI_ValueStruct.Move_E_scale = 0;
           //dwin_zoffset = TERN(HAS_ONESTEP_LEVELING, probe.offset.z, 0);
@@ -2586,9 +2571,9 @@ void HMI_Prepare() {
         select_aux.reset();
         Popup_Window_Home(false);
         DWIN_UpdateLCD();
-        gcode.process_subcommands_now( PSTR("M220 S100"));
-        gcode.process_subcommands_now( PSTR("G28"));
-        gcode.process_subcommands_now( PSTR("G92 E0"));
+        gcode.process_subcommands_now_P( PSTR("M220 S100"));
+        gcode.process_subcommands_now_P( PSTR("G28"));
+        gcode.process_subcommands_now_P( PSTR("G92 E0"));
         planner.synchronize();
         current_position.e = HMI_ValueStruct.Move_E_scale = 0;
         Draw_AUX_Menu();
@@ -2809,7 +2794,7 @@ void HMI_Control() {
   void HMI_Leveling() {
     Popup_Window_Leveling();
     DWIN_UpdateLCD();
-    gcode.process_subcommands_now( PSTR("M220 S100"));
+    gcode.process_subcommands_now_P( PSTR("M220 S100"));
     queue.inject_P(PSTR("G28O\nG29"));
   }
 
@@ -3351,22 +3336,22 @@ void HMI_AUX() {
          index_aux = MROWS;
          //Popup_Window_Aux();
          //DWIN_UpdateLCD();
-        gcode.process_subcommands_now( PSTR("G1 F4000"));
-        gcode.process_subcommands_now( PSTR("G1 Z10"));
-        gcode.process_subcommands_now( PSTR("G1 X20 Y20"));
-        gcode.process_subcommands_now( PSTR("G1 F300 Z0"));
-        gcode.process_subcommands_now( PSTR("M220 S100"));
+        gcode.process_subcommands_now_P( PSTR("G1 F4000"));
+        gcode.process_subcommands_now_P( PSTR("G1 Z10"));
+        gcode.process_subcommands_now_P( PSTR("G1 X20 Y20"));
+        gcode.process_subcommands_now_P( PSTR("G1 F300 Z0"));
+        gcode.process_subcommands_now_P( PSTR("M220 S100"));
         
         planner.synchronize();
         break;
       case 2: // top left
        // checkkey = Move2;
        index_aux = MROWS;
-        gcode.process_subcommands_now( PSTR("G1 F4000"));
-        gcode.process_subcommands_now( PSTR("G1 Z10"));
-        gcode.process_subcommands_now( PSTR("G1 X20 Y200"));
-        gcode.process_subcommands_now( PSTR("G1 F300 Z0"));
-        gcode.process_subcommands_now( PSTR("M220 S100"));
+        gcode.process_subcommands_now_P( PSTR("G1 F4000"));
+        gcode.process_subcommands_now_P( PSTR("G1 Z10"));
+        gcode.process_subcommands_now_P( PSTR("G1 X20 Y200"));
+        gcode.process_subcommands_now_P( PSTR("G1 F300 Z0"));
+        gcode.process_subcommands_now_P( PSTR("M220 S100"));
         planner.synchronize();
         break;
       case 3: // top right
@@ -3376,7 +3361,7 @@ void HMI_AUX() {
         gcode.process_subcommands_now_P( PSTR("G1 Z10"));
         gcode.process_subcommands_now_P( PSTR("G1 X200 Y200"));
         gcode.process_subcommands_now_P( PSTR("G1 F300 Z0"));
-        gcode.process_subcommands_now( PSTR("M220 S100"));
+        gcode.process_subcommands_now_P( PSTR("M220 S100"));
         planner.synchronize();
         break;
       case 4: // bottom right
@@ -3386,7 +3371,7 @@ void HMI_AUX() {
         gcode.process_subcommands_now_P( PSTR("G1 Z10"));
         gcode.process_subcommands_now_P( PSTR("G1 X200 Y20"));
         gcode.process_subcommands_now_P( PSTR("G1 F300 Z0"));
-        gcode.process_subcommands_now( PSTR("M220 S100"));
+        gcode.process_subcommands_now_P( PSTR("M220 S100"));
       planner.synchronize();
          
         break;
@@ -3397,7 +3382,7 @@ void HMI_AUX() {
         gcode.process_subcommands_now_P( PSTR("G1 Z10"));
         gcode.process_subcommands_now_P( PSTR("G1 X145 Y116"));
         gcode.process_subcommands_now_P( PSTR("G1 F300 Z0"));
-        gcode.process_subcommands_now( PSTR("M220 S100"));
+        gcode.process_subcommands_now_P( PSTR("M220 S100"));
         planner.synchronize();
         break;
       default:
@@ -3425,7 +3410,6 @@ void HMI_Refuel(void){
   #endif
 
   char gcode_string[80];
-  static float last_E_scale = 0;
   if (encoder_diffState == ENCODER_DIFF_CW) {
     if (select_refuel.inc(4)) Move_Highlight(1, select_refuel.now);
   }
@@ -4017,7 +4001,7 @@ void EachMomentUpdate() {
   else if (dwin_abort_flag && !HMI_flag.home_flag) { // Print Stop
     dwin_abort_flag = false;
     HMI_ValueStruct.print_speed = feedrate_percentage = 100;
-    dwin_zoffset = TERN0(HAS_BED_PROBE, probe.offset.z);
+    dwin_zoffset = BABY_Z_VAR;
     select_page.set(0);
     Goto_MainMenu();
   }
@@ -4132,6 +4116,7 @@ void DWIN_HandleScreen() {
 
 void DWIN_CompletedHoming() {
   HMI_flag.home_flag = false;
+  dwin_zoffset = TERN0(HAS_BED_PROBE, probe.offset.z);
   if (checkkey == Last_Prepare) {
     checkkey = Prepare;
     select_prepare.now = PREPARE_CASE_HOME;
@@ -4140,7 +4125,6 @@ void DWIN_CompletedHoming() {
   }
   else if (checkkey == Back_Main) {
     HMI_ValueStruct.print_speed = feedrate_percentage = 100;
-    dwin_zoffset = TERN0(HAS_BED_PROBE, probe.offset.z);
     planner.finish_and_disable();
     Goto_MainMenu();
   }
