@@ -26,9 +26,7 @@
 
 #if NOT_TARGET(__STM32F1__)
   #error "Oops! Select an STM32F1 board in 'Tools > Board.'"
-#endif
-
-#if HOTENDS > 1 || E_STEPPERS > 1
+#elif HOTENDS > 1 || E_STEPPERS > 1
   #error "CREALITY supports up to 1 hotends / E-steppers. Comment out this line to continue."
 #endif
 
@@ -38,6 +36,8 @@
 #ifndef DEFAULT_MACHINE_NAME
   #define DEFAULT_MACHINE_NAME "Ender 3 V2"
 #endif
+
+#define BOARD_NO_NATIVE_USB
 
 //
 // EEPROM
@@ -81,7 +81,12 @@
 #define Y_STOP_PIN                          PA6
 #define Z_STOP_PIN                          PA7
 
-#define Z_MIN_PROBE_PIN                     PB1   // BLTouch IN
+#ifdef Z_MIN_PROBE_PIN
+  #undef Z_MIN_PROBE_PIN
+  #define Z_MIN_PROBE_PIN                     PB1   // BLTouch IN
+#else
+  #define Z_MIN_PROBE_PIN                     PB1   // BLTouch IN
+#endif
 
 //
 // Filament Runout Sensor
