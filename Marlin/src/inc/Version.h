@@ -25,7 +25,7 @@
  * Release version. Leave the Marlin version or apply a custom scheme.
  */
 #ifndef SHORT_BUILD_VERSION
-  #define SHORT_BUILD_VERSION "E3V2-2.0.x-16-3-Smith3D.M"
+  #define SHORT_BUILD_VERSION "E3V2-2.0.x-17-Smith3D.M"
 #endif
 
 /**
@@ -42,7 +42,7 @@
  * version was tagged.
  */
 #ifndef STRING_DISTRIBUTION_DATE
-  #define STRING_DISTRIBUTION_DATE "2020-12-31"
+  #define STRING_DISTRIBUTION_DATE "2021-03-03"
 #endif
 
 /**
